@@ -1,0 +1,86 @@
+.screen-container {
+  padding: 20px;
+  min-height: 100vh;
+  padding-bottom: 80px; /* Space for bottom tabs */
+}
+
+.screen-header {
+  margin-bottom: 25px;
+}
+
+.screen-header h1 {
+  margin-bottom: 5px;
+  font-family: Georgia, serif;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 60vh;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 60px;
+  margin-bottom: 20px;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  padding: 20px;
+  border-radius: 12px;
+  text-align: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.stat-number {
+  font-size: 32px;
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.stat-label {
+  font-size: 14px;
+}
+
+.mood-breakdown {
+  background-color: white;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+}
+
+.mood-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 0;
+  border-bottom: 1px solid #FFE6E6;
+}
+
+.mood-item:last-child {
+  border-bottom: none;
+}
+
+.mood-color {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  margin-right: 12px;
+}
+
+.mood-name {
+  flex: 1;
+  font-weight: 500;
+}
+
+.mood-count {
+  font-size: 14px;
+}
