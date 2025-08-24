@@ -9,7 +9,7 @@ import BottomTabs from './components/common/BottomTabs.jsx';
 import './App.css';
 
 function AppContent() {
-  const { user, setUser, books, addBook } = useApp();
+  const { user, books, addBook, logout } = useApp(); // Add logout from context
   const [activeTab, setActiveTab] = useState('library');
   const [authMode, setAuthMode] = useState('login');
 
@@ -20,17 +20,17 @@ function AppContent() {
 
   const handleLogin = (userData) => {
     console.log('Logging in with:', userData);
-    setUser(userData);
+    // setUser is no longer needed as auth is handled by Firebase Auth listener
   };
 
   const handleSignup = (userData) => {
     console.log('Signing up with:', userData);
-    setUser(userData);
+    // setUser is no longer needed as auth is handled by Firebase Auth listener
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     console.log('Logging out');
-    setUser(null);
+    await logout(); // Use the logout function from context
     setAuthMode('login');
   };
 
@@ -56,13 +56,13 @@ function AppContent() {
   const renderScreen = () => {
     switch (activeTab) {
       case 'library':
-        return <LibraryScreen books={books} onBookSelect={() => {}} />;
+        return <LibraryScreen onBookSelect={() => {}} />; // Remove books prop
       case 'add':
         return <AddBookScreen onAddBook={addBook} />;
       case 'stats':
-        return <StatsScreen books={books} />;
+        return <StatsScreen />; // Remove books prop
       default:
-        return <LibraryScreen books={books} onBookSelect={() => {}} />;
+        return <LibraryScreen onBookSelect={() => {}} />; // Remove books prop
     }
   };
 

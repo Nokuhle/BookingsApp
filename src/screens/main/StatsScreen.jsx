@@ -1,11 +1,13 @@
 import React from 'react';
 import { colors } from '../../../styles/theme';
+import { useApp } from '../../context/AppContext';
 import './MainScreens.css';
 
-const StatsScreen = ({ books }) => {
+const StatsScreen = () => {
+  const { books } = useApp();
+  
   const totalBooks = books.length;
   
-  // Fix: Use moodColor instead of mood
   const moods = books.reduce((acc, book) => {
     if (book.moodColor) {
       acc[book.moodColor] = (acc[book.moodColor] || 0) + 1;
@@ -47,7 +49,7 @@ const StatsScreen = ({ books }) => {
             <div key={moodColor} className="mood-item">
               <div className="mood-color" style={{ backgroundColor: moodColor }}></div>
               <span className="mood-name" style={{ color: colors.text }}>
-                {moodColor} {/* You might want to map colors to names */}
+                {moodColor}
               </span>
               <span className="mood-count" style={{ color: colors.lightText }}>
                 {count} {count === 1 ? 'book' : 'books'}

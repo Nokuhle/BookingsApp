@@ -3,7 +3,7 @@ import { ChromePicker } from 'react-color';
 import { colors } from '../../../styles/theme';
 import './BookComponents.css';
 
-const MoodForm = ({ book, onSubmit }) => {
+const MoodForm = ({ book, onSubmit, isSubmitting }) => {
   const [moodColor, setMoodColor] = useState('#FFB6C1');
   const [emotions, setEmotions] = useState([]);
   const [notes, setNotes] = useState('');
@@ -20,14 +20,14 @@ const MoodForm = ({ book, onSubmit }) => {
   };
 
   const handleSubmit = (e) => {
-  e.preventDefault();
-  onSubmit({
-    moodColor,
-    emotions,
-    notes,
-    dateAdded: new Date().toISOString()
-  });
-};
+    e.preventDefault();
+    onSubmit({
+      moodColor,
+      emotions,
+      notes,
+      dateAdded: new Date().toISOString()
+    });
+  };
 
   return (
     <div className="mood-form">
@@ -95,6 +95,7 @@ const MoodForm = ({ book, onSubmit }) => {
             onChange={(e) => setNotes(e.target.value)}
             placeholder="How did this book make you feel? What stood out to you?"
             style={{ borderColor: colors.border }}
+            disabled={isSubmitting}
           ></textarea>
         </div>
         
@@ -102,8 +103,9 @@ const MoodForm = ({ book, onSubmit }) => {
           type="submit" 
           className="mood-submit-button"
           style={{ backgroundColor: colors.accent }}
+          disabled={isSubmitting}
         >
-          Save Book & Mood
+          {isSubmitting ? 'Saving...' : 'Save Book & Mood'}
         </button>
       </form>
     </div>

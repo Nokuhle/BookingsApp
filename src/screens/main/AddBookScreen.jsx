@@ -11,6 +11,7 @@ const AddBookScreen = ({ onAddBook }) => {
   const [selectedBook, setSelectedBook] = useState(null);
   const [step, setStep] = useState('search');
   const { user } = useApp();
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleBookSelect = (book) => {
     setSelectedBook(book);
@@ -18,6 +19,14 @@ const AddBookScreen = ({ onAddBook }) => {
   };
 
   const handleMoodSubmit = async (moodData) => {
+    if (!user || !user.uid) {
+      console.error("No user logged in");
+      alert("Please log in to save books");
+      return;
+    }
+
+    setIsSaving(true);
+    
     try {
       // Prepare book data for Firestore
       const bookData = {
@@ -27,23 +36,34 @@ const AddBookScreen = ({ onAddBook }) => {
         dateAdded: serverTimestamp()
       };
 
+      console.log("Saving book to Firestore:", bookData);
+      
       // Add to Firestore
       const docRef = await addDoc(collection(db, "userBooks"), bookData);
       
       console.log("Book saved with ID: ", docRef.id);
       
-      // Update local state
-      onAddBook({
+      // Update local state with the new book (including Firestore ID)
+      const bookWithId = {
         ...bookData,
-        id: docRef.id // Add the Firestore document ID
-      });
+        id: docRef.id
+      };
+      
+      onAddBook(bookWithId);
       
       setSelectedBook(null);
       setStep('search');
     } catch (error) {
-      console.error("Error adding book: ", error);
+      console.error("Error adding book to Firestore: ", error);
       alert("Error saving book. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const handleCancel = () => {
+    setSelectedBook(null);
+    setStep('search');
   };
 
   return (
@@ -52,12 +72,32 @@ const AddBookScreen = ({ onAddBook }) => {
         <h1 style={{ color: colors.text }}>
           {step === 'search' ? 'Add a Book' : 'Capture the Vibe'}
         </h1>
+        {step === 'mood' && (
+          <button 
+            onClick={handleCancel}
+            style={{
+              backgroundColor: colors.secondary,
+              color: 'white',
+              border: 'none',
+              padding: '8px 16px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              marginLeft: '10px'
+            }}
+          >
+            Cancel
+          </button>
+        )}
       </div>
       
       {step === 'search' ? (
         <BookSearch onBookSelect={handleBookSelect} />
       ) : (
-        <MoodForm book={selectedBook} onSubmit={handleMoodSubmit} />
+        <MoodForm 
+          book={selectedBook} 
+          onSubmit={handleMoodSubmit} 
+          isSubmitting={isSaving}
+        />
       )}
     </div>
   );
