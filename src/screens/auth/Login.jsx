@@ -1,13 +1,17 @@
 import React, { useState } from 'react';
 import { colors } from '../../../styles/theme';
+import { auth, db } from "../../firebase";
+import { signInWithEmailAndPassword } from "firebase/auth";
+import { doc, getDoc } from "firebase/firestore";
 import './Auth.css';
 
 const Login = ({ onLogin, onSwitchToSignup }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
@@ -17,8 +21,56 @@ const Login = ({ onLogin, onSwitchToSignup }) => {
       return;
     }
     
-    // For demo purposes, accept any non-empty credentials
-    onLogin({ email, name: email.split('@')[0] });
+    setIsLoading(true);
+    
+    try {
+      const userCredential = await signInWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+      const user = userCredential.user;
+
+      // Fetch user data from Firestore collection "userstwo"
+      const userDoc = await getDoc(doc(db, "userstwo", user.uid));
+      if (userDoc.exists()) {
+        const userData = { uid: user.uid, ...userDoc.data() };
+        onLogin(userData);
+      } else {
+        // If user doesn't exist in userstwo, create basic user data
+        onLogin({ 
+          uid: user.uid, 
+          email: user.email, 
+          name: email.split('@')[0] 
+        });
+      }
+    } catch (error) {
+      console.error("Error logging in:", error.message);
+      
+      // Handle specific Firebase errors
+      let errorMessage = "An error occurred during login. Please try again.";
+      
+      switch (error.code) {
+        case 'auth/invalid-email':
+          errorMessage = "The email address is not valid.";
+          break;
+        case 'auth/user-disabled':
+          errorMessage = "This account has been disabled.";
+          break;
+        case 'auth/user-not-found':
+          errorMessage = "No account found with this email.";
+          break;
+        case 'auth/wrong-password':
+          errorMessage = "Incorrect password.";
+          break;
+        default:
+          errorMessage = error.message || errorMessage;
+      }
+      
+      setError(errorMessage);
+    }
+    
+    setIsLoading(false);
   };
 
   return (
@@ -40,6 +92,7 @@ const Login = ({ onLogin, onSwitchToSignup }) => {
             required
             style={{ borderColor: colors.border }}
             placeholder="Enter your email"
+            disabled={isLoading}
           />
         </div>
         
@@ -52,6 +105,7 @@ const Login = ({ onLogin, onSwitchToSignup }) => {
             required
             style={{ borderColor: colors.border }}
             placeholder="Enter your password"
+            disabled={isLoading}
           />
         </div>
         
@@ -59,15 +113,10 @@ const Login = ({ onLogin, onSwitchToSignup }) => {
           type="submit" 
           className="auth-button"
           style={{ backgroundColor: colors.accent }}
+          disabled={isLoading}
         >
-          Log In
+          {isLoading ? 'Logging in...' : 'Log In'}
         </button>
-        
-        <div className="auth-demo-hint">
-          <p style={{ color: colors.lightText, fontSize: '14px' }}>
-            For demo purposes, any email and password will work
-          </p>
-        </div>
       </form>
       
       <div className="auth-footer">

@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { colors } from '../../../styles/theme';
+import { auth, db } from "../../firebase";
+import { createUserWithEmailAndPassword } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 import './Auth.css';
 
 const Signup = ({ onSignup, onSwitchToLogin }) => {
@@ -7,8 +10,9 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     
@@ -18,12 +22,67 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
       return;
     }
     
-    if (password.length < 3) {
-      setError('Password should be at least 3 characters');
+    if (password.length < 6) {
+      setError('Password should be at least 6 characters');
       return;
     }
     
-    onSignup({ email, password, name });
+    setIsLoading(true);
+    
+    try {
+      // Create user with Firebase Authentication
+      const userCredential = await createUserWithEmailAndPassword(
+        auth,
+        email,
+        password
+      );
+
+      const user = userCredential.user;
+      
+      // Prepare user data for Firestore collection "userstwo"
+      const userData = {
+        name: name,
+        email: email,
+        createdAt: new Date()
+      };
+      
+      // Store user data in Firestore with the user's UID as document ID
+      await setDoc(doc(db, "userstwo", user.uid), userData);
+      
+      // Update user context
+      onSignup({ 
+        uid: user.uid, 
+        email: user.email, 
+        name: name
+      });
+      
+    } catch (error) {
+      console.error("Error signing up:", error);
+      
+      // Handle specific Firebase errors
+      let errorMessage = "An error occurred during signup. Please try again.";
+      
+      switch (error.code) {
+        case 'auth/email-already-in-use':
+          errorMessage = "This email is already registered. Please use a different email or sign in.";
+          break;
+        case 'auth/invalid-email':
+          errorMessage = "The email address is not valid.";
+          break;
+        case 'auth/operation-not-allowed':
+          errorMessage = "Email/password accounts are not enabled. Please contact support.";
+          break;
+        case 'auth/weak-password':
+          errorMessage = "The password is too weak. Please choose a stronger password.";
+          break;
+        default:
+          errorMessage = error.message || errorMessage;
+      }
+      
+      setError(errorMessage);
+    }
+    
+    setIsLoading(false);
   };
 
   return (
@@ -45,6 +104,7 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
             required
             style={{ borderColor: colors.border }}
             placeholder="Enter your name"
+            disabled={isLoading}
           />
         </div>
         
@@ -57,6 +117,7 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
             required
             style={{ borderColor: colors.border }}
             placeholder="Enter your email"
+            disabled={isLoading}
           />
         </div>
         
@@ -68,7 +129,8 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
             onChange={(e) => setPassword(e.target.value)}
             required
             style={{ borderColor: colors.border }}
-            placeholder="Create a password"
+            placeholder="Create a password (min. 6 characters)"
+            disabled={isLoading}
           />
         </div>
         
@@ -76,15 +138,10 @@ const Signup = ({ onSignup, onSwitchToLogin }) => {
           type="submit" 
           className="auth-button"
           style={{ backgroundColor: colors.accent }}
+          disabled={isLoading}
         >
-          Sign Up
+          {isLoading ? 'Creating Account...' : 'Sign Up'}
         </button>
-        
-        <div className="auth-demo-hint">
-          <p style={{ color: colors.lightText, fontSize: '14px' }}>
-            For demo purposes, any credentials will work
-          </p>
-        </div>
       </form>
       
       <div className="auth-footer">
