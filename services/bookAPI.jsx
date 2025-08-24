@@ -2,36 +2,181 @@ import axios from 'axios';
 
 const OPEN_LIBRARY_API = 'https://openlibrary.org/search.json';
 
-export const searchBooks = async (query) => {
+// Helper function to normalize subject keys
+const normalizeSubjectKey = (subject) => {
+  return subject
+    .toLowerCase()
+    .replace(/\s+/g, '_')
+    .replace(/[^\w_]/g, '')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+};
+
+// services/bookAPI.js
+export const searchBooks = async (query, searchType = 'title') => {
   try {
-    const response = await axios.get(OPEN_LIBRARY_API, {
-      params: {
+    let url;
+    let params = {};
+    
+    if (searchType === 'subject') {
+      // Search by subject using Open Library's search API with subject field
+      params = {
+        subject: query,
+        limit: 20,
+        fields: 'key,title,author_name,cover_i,subject'
+      };
+    } else if (searchType === 'subject_key') {
+      // Exact subject match using subject_key
+      const subjectKey = normalizeSubjectKey(query);
+      params = {
+        subject_key: subjectKey,
+        limit: 20,
+        fields: 'key,title,author_name,cover_i,subject'
+      };
+    } else {
+      // Default search by title/author
+      params = {
         q: query,
-        limit: 10,
-        fields: 'key,title,author_name,cover_i,first_publish_year,edition_count,isbn,language'
+        limit: 20,
+        fields: 'key,title,author_name,cover_i,subject'
+      };
+    }
+    
+    const response = await axios.get(OPEN_LIBRARY_API, { params });
+    const data = response.data;
+    
+    // Process search results
+    return data.docs?.map(doc => ({
+      id: doc.key,
+      title: doc.title || 'Unknown Title',
+      author: doc.author_name?.[0] || 'Unknown Author',
+      coverUrl: doc.cover_i 
+        ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+        : null,
+      subjects: doc.subject || []
+    })) || [];
+  } catch (error) {
+    console.error('Search error:', error);
+    throw error;
+  }
+};
+
+// Advanced subject search with multiple options
+export const searchBooksBySubject = async (subject, options = {}) => {
+  try {
+    const {
+      exactMatch = false,
+      excludeSubjects = [],
+      limit = 20
+    } = options;
+
+    let query = '';
+    
+    if (exactMatch) {
+      const subjectKey = normalizeSubjectKey(subject);
+      query = `subject_key:${subjectKey}`;
+    } else {
+      query = `subject:${subject}`;
+    }
+
+    // Add negative search for excluded subjects
+    excludeSubjects.forEach(excludedSubject => {
+      const excludedKey = normalizeSubjectKey(excludedSubject);
+      query += ` -subject_key:${excludedKey}`;
+    });
+
+    const params = {
+      q: query,
+      limit: limit,
+      fields: 'key,title,author_name,cover_i,subject'
+    };
+
+    const response = await axios.get(OPEN_LIBRARY_API, { params });
+    const data = response.data;
+    
+    return data.docs?.map(doc => ({
+      id: doc.key,
+      title: doc.title || 'Unknown Title',
+      author: doc.author_name?.[0] || 'Unknown Author',
+      coverUrl: doc.cover_i 
+        ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+        : null,
+      subjects: doc.subject || [],
+      searchType: 'subject'
+    })) || [];
+  } catch (error) {
+    console.error('Subject search error:', error);
+    throw error;
+  }
+};
+
+// Search by multiple criteria
+export const advancedBookSearch = async (criteria) => {
+  try {
+    let queryParts = [];
+    
+    if (criteria.title) queryParts.push(`title:${criteria.title}`);
+    if (criteria.author) queryParts.push(`author:${criteria.author}`);
+    if (criteria.subject) queryParts.push(`subject:${criteria.subject}`);
+    if (criteria.subject_key) {
+      const subjectKey = normalizeSubjectKey(criteria.subject_key);
+      queryParts.push(`subject_key:${subjectKey}`);
+    }
+    if (criteria.place) queryParts.push(`place:${criteria.place}`);
+    if (criteria.time) queryParts.push(`time:${criteria.time}`);
+    if (criteria.person) queryParts.push(`person:${criteria.person}`);
+    
+    // Add negative searches
+    if (criteria.exclude_subject) {
+      const excludedKey = normalizeSubjectKey(criteria.exclude_subject);
+      queryParts.push(`-subject_key:${excludedKey}`);
+    }
+
+    const query = queryParts.join(' ');
+    
+    const params = {
+      q: query,
+      limit: criteria.limit || 20,
+      fields: 'key,title,author_name,cover_i,subject,first_publish_year'
+    };
+
+    const response = await axios.get(OPEN_LIBRARY_API, { params });
+    const data = response.data;
+    
+    return data.docs?.map(doc => ({
+      id: doc.key,
+      title: doc.title || 'Unknown Title',
+      author: doc.author_name?.[0] || 'Unknown Author',
+      coverUrl: doc.cover_i 
+        ? `https://covers.openlibrary.org/b/id/${doc.cover_i}-M.jpg`
+        : null,
+      subjects: doc.subject || [],
+      publishedYear: doc.first_publish_year,
+      searchType: 'advanced'
+    })) || [];
+  } catch (error) {
+    console.error('Advanced search error:', error);
+    throw error;
+  }
+};
+
+// Get popular subjects (for suggestions)
+export const getPopularSubjects = async (limit = 10) => {
+  try {
+    // This is a simplified approach - you might want to use a different endpoint
+    const response = await axios.get('https://openlibrary.org/subjects.json', {
+      params: {
+        limit: limit
       }
     });
     
-    return response.data.docs.map(book => {
-      // Get the cover image URL if available
-      let coverUrl = null;
-      if (book.cover_i) {
-        coverUrl = `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg`;
-      }
-      
-      return {
-        id: book.key,
-        title: book.title || 'Unknown Title',
-        author: book.author_name ? book.author_name.join(', ') : 'Unknown Author',
-        coverUrl: coverUrl,
-        publishedYear: book.first_publish_year,
-        editionCount: book.edition_count,
-        isbn: book.isbn ? book.isbn[0] : null,
-        language: book.language ? book.language[0] : 'en'
-      };
-    });
+    return response.data.works?.map(work => ({
+      name: work.subject,
+      count: work.work_count,
+      key: normalizeSubjectKey(work.subject)
+    })) || [];
   } catch (error) {
-    console.error('Error searching books:', error);
+    console.error('Error fetching popular subjects:', error);
     return [];
   }
 };
@@ -75,75 +220,8 @@ export const getBookDetails = async (bookId) => {
   }
 };
 
-// Function to search by specific fields (title, author, etc.)
-export const searchBooksByField = async (field, query) => {
-  try {
-    const params = {};
-    params[field] = query;
-    
-    const response = await axios.get(OPEN_LIBRARY_API, {
-      params: {
-        ...params,
-        limit: 10,
-        fields: 'key,title,author_name,cover_i,first_publish_year,edition_count,isbn'
-      }
-    });
-    
-    return response.data.docs.map(book => {
-      let coverUrl = null;
-      if (book.cover_i) {
-        coverUrl = `https://covers.openlibrary.org/b/id/${book.cover_i}-M.jpg`;
-      }
-      
-      return {
-        id: book.key,
-        title: book.title || 'Unknown Title',
-        author: book.author_name ? book.author_name.join(', ') : 'Unknown Author',
-        coverUrl: coverUrl,
-        publishedYear: book.first_publish_year,
-        editionCount: book.edition_count,
-        isbn: book.isbn ? book.isbn[0] : null
-      };
-    });
-  } catch (error) {
-    console.error(`Error searching books by ${field}:`, error);
-    return [];
-  }
-};
-
-// Specific search functions
-export const searchBooksByTitle = (title) => searchBooksByField('title', title);
-export const searchBooksByAuthor = (author) => searchBooksByField('author', author);
-
 // Function to get book cover by Open Library ID
 export const getBookCover = (coverId, size = 'M') => {
   if (!coverId) return null;
   return `https://covers.openlibrary.org/b/id/${coverId}-${size}.jpg`;
-};
-
-// Function to get author information
-export const getAuthorInfo = async (authorKey) => {
-  try {
-    const cleanKey = authorKey.replace('/authors/', '');
-    const response = await axios.get(`https://openlibrary.org/authors/${cleanKey}.json`);
-    
-    const authorData = response.data;
-    
-    let photoUrl = null;
-    if (authorData.photos && authorData.photos.length > 0) {
-      photoUrl = `https://covers.openlibrary.org/a/olid/${cleanKey}-M.jpg`;
-    }
-    
-    return {
-      name: authorData.name || 'Unknown Author',
-      bio: authorData.bio ? (typeof authorData.bio === 'string' ? authorData.bio : authorData.bio.value) : 'No biography available',
-      birthDate: authorData.birth_date,
-      deathDate: authorData.death_date,
-      photoUrl: photoUrl,
-      works: authorData.works ? authorData.works.length : 0
-    };
-  } catch (error) {
-    console.error('Error fetching author info:', error);
-    return null;
-  }
 };
