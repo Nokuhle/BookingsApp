@@ -4,8 +4,12 @@ import './MainScreens.css';
 
 const StatsScreen = ({ books }) => {
   const totalBooks = books.length;
+  
+  // Fix: Use moodColor instead of mood
   const moods = books.reduce((acc, book) => {
-    acc[book.mood] = (acc[book.mood] || 0) + 1;
+    if (book.moodColor) {
+      acc[book.moodColor] = (acc[book.moodColor] || 0) + 1;
+    }
     return acc;
   }, {});
 
@@ -38,17 +42,23 @@ const StatsScreen = ({ books }) => {
       
       <div className="mood-breakdown">
         <h3 style={{ color: colors.text }}>Mood Breakdown</h3>
-        {Object.entries(moods).map(([mood, count]) => (
-          <div key={mood} className="mood-item">
-            <div className="mood-color" style={{ backgroundColor: mood }}></div>
-            <span className="mood-name" style={{ color: colors.text }}>
-              {mood}
-            </span>
-            <span className="mood-count" style={{ color: colors.lightText }}>
-              {count} {count === 1 ? 'book' : 'books'}
-            </span>
-          </div>
-        ))}
+        {Object.entries(moods).length > 0 ? (
+          Object.entries(moods).map(([moodColor, count]) => (
+            <div key={moodColor} className="mood-item">
+              <div className="mood-color" style={{ backgroundColor: moodColor }}></div>
+              <span className="mood-name" style={{ color: colors.text }}>
+                {moodColor} {/* You might want to map colors to names */}
+              </span>
+              <span className="mood-count" style={{ color: colors.lightText }}>
+                {count} {count === 1 ? 'book' : 'books'}
+              </span>
+            </div>
+          ))
+        ) : (
+          <p style={{ color: colors.lightText, textAlign: 'center', padding: '20px' }}>
+            No books with moods recorded yet
+          </p>
+        )}
       </div>
     </div>
   );

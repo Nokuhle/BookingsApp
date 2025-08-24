@@ -20,14 +20,14 @@ const MoodForm = ({ book, onSubmit }) => {
   };
 
   const handleSubmit = (e) => {
-    e.preventDefault();
-    onSubmit({
-      moodColor,
-      emotions,
-      notes,
-      dateAdded: new Date().toISOString()
-    });
-  };
+  e.preventDefault();
+  onSubmit({
+    moodColor,
+    emotions,
+    notes,
+    dateAdded: new Date().toISOString()
+  });
+};
 
   return (
     <div className="mood-form">

@@ -1,4 +1,7 @@
 import React, { createContext, useContext, useReducer, useEffect } from 'react';
+import { collection, query, where, onSnapshot, orderBy } from 'firebase/firestore';
+import { db } from '../firebase';
+
 
 const AppContext = createContext();
 
@@ -16,6 +19,8 @@ function appReducer(state, action) {
       localStorage.setItem('readify_books', JSON.stringify(newBooks));
       return { ...state, books: newBooks };
     case 'LOAD_BOOKS':
+      return { ...state, books: action.payload };
+    case 'SET_BOOKS':
       return { ...state, books: action.payload };
     default:
       return state;
@@ -45,6 +50,31 @@ export function AppProvider({ children }) {
       dispatch({ type: 'ADD_BOOK', payload: book });
     },
   };
+
+  useEffect(() => {
+  if (state.user) {
+    // Subscribe to user's books
+    const booksQuery = query(
+      collection(db, "userBooks"),
+      where("userId", "==", state.user.uid),
+      orderBy("dateAdded", "desc")
+    );
+    
+    const unsubscribe = onSnapshot(booksQuery, (querySnapshot) => {
+      const books = [];
+      querySnapshot.forEach((doc) => {
+        books.push({ id: doc.id, ...doc.data() });
+      });
+      dispatch({ type: 'SET_BOOKS', payload: books });
+    }, (error) => {
+      console.error("Error fetching books: ", error);
+    });
+    
+    return () => unsubscribe();
+  } else {
+    dispatch({ type: 'SET_BOOKS', payload: [] });
+  }
+}, [state.user]);
 
   return (
     <AppContext.Provider value={value}>
